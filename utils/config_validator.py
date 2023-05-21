@@ -52,10 +52,9 @@ def check_config_style(filepath):
                 lastIsCurlyBrace = False
             if c == '\n': # Keeping track of our line numbers
                 lineNumber += 1 # so we can print accurate line number information when we detect a possible error
-            if (isInString): # while we are in a string, we can ignore everything else, except the end of the string
+            if isInString: # while we are in a string, we can ignore everything else, except the end of the string
                 if (c == inStringType):
                     isInString = False
-            # if we are not in a comment block, we will check if we are at the start of one or count the () {} and []
             elif (isInCommentBlock == False):
 
                 # This means we have encountered a /, so we are now checking if this is an inline comment or a comment block
@@ -67,11 +66,11 @@ def check_config_style(filepath):
                         ignoreTillEndOfLine = True # and an line comment is a / followed by another / (//) We won't care about anything that comes after it
 
                 if (isInCommentBlock == False):
-                    if (ignoreTillEndOfLine): # we are in a line comment, just continue going through the characters until we find an end of line
+                    if ignoreTillEndOfLine: # we are in a line comment, just continue going through the characters until we find an end of line
                         if (c == '\n'):
                             ignoreTillEndOfLine = False
                     else: # validate brackets
-                        if (c == '"' or c == "'"):
+                        if c in ['"', "'"]:
                             isInString = True
                             inStringType = c
                         elif (c == '/'):
@@ -79,14 +78,20 @@ def check_config_style(filepath):
                         elif (c == '('):
                             brackets_list.append('(')
                         elif (c == ')'):
-                            if (len(brackets_list) > 0 and brackets_list[-1] in ['{', '[']):
+                            if brackets_list and brackets_list[-1] in [
+                                '{',
+                                '[',
+                            ]:
                                 print("ERROR: Possible missing round bracket ')' detected at {0} Line number: {1}".format(filepath,lineNumber))
                                 bad_count_file += 1
                             brackets_list.append(')')
                         elif (c == '['):
                             brackets_list.append('[')
                         elif (c == ']'):
-                            if (len(brackets_list) > 0 and brackets_list[-1] in ['{', '(']):
+                            if brackets_list and brackets_list[-1] in [
+                                '{',
+                                '(',
+                            ]:
                                 print("ERROR: Possible missing square bracket ']' detected at {0} Line number: {1}".format(filepath,lineNumber))
                                 bad_count_file += 1
                             brackets_list.append(']')
@@ -94,13 +99,16 @@ def check_config_style(filepath):
                             brackets_list.append('{')
                         elif (c == '}'):
                             lastIsCurlyBrace = True
-                            if (len(brackets_list) > 0 and brackets_list[-1] in ['(', '[']):
+                            if brackets_list and brackets_list[-1] in [
+                                '(',
+                                '[',
+                            ]:
                                 print("ERROR: Possible missing curly brace '}}' detected at {0} Line number: {1}".format(filepath,lineNumber))
                                 bad_count_file += 1
                             brackets_list.append('}')
-                        #elif (c== '\t'):
-                        #    print("ERROR: Tab detected at {0} Line number: {1}".format(filepath,lineNumber))
-                        #    bad_count_file += 1
+                                            #elif (c== '\t'):
+                                            #    print("ERROR: Tab detected at {0} Line number: {1}".format(filepath,lineNumber))
+                                            #    bad_count_file += 1
 
             else: # Look for the end of our comment block
                 if (c == '*'):
@@ -134,17 +142,16 @@ def main():
     parser.add_argument('-m','--module', help='only search specified module addon folder', required=False, default="")
     args = parser.parse_args()
 
-    # Allow running from root directory as well as from inside the tools directory
-    rootDir = "../addons"
-    if (os.path.exists("addons")):
-        rootDir = "addons"
-
-    for root, dirnames, filenames in os.walk(rootDir + '/' + args.module):
-      for filename in fnmatch.filter(filenames, '*.cpp'):
-        sqf_list.append(os.path.join(root, filename))
-      for filename in fnmatch.filter(filenames, '*.hpp'):
-        sqf_list.append(os.path.join(root, filename))
-
+    rootDir = "addons" if (os.path.exists("addons")) else "../addons"
+    for root, dirnames, filenames in os.walk(f'{rootDir}/{args.module}'):
+        sqf_list.extend(
+            os.path.join(root, filename)
+            for filename in fnmatch.filter(filenames, '*.cpp')
+        )
+        sqf_list.extend(
+            os.path.join(root, filename)
+            for filename in fnmatch.filter(filenames, '*.hpp')
+        )
     for filename in sqf_list:
         bad_count = bad_count + check_config_style(filename)
 
